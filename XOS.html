@@ -1,0 +1,820 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>XOS - Web Desktop</title>
+
+  <!-- Tailwind CSS for clean, responsive layout utilities -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Google Fonts: Inter (UI) & JetBrains Mono (Command Prompt / Calculator) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* =========================================================
+       1. CHANGE YOUR BACKGROUND IMAGE URL BELOW
+       Replace the URL inside url('...') with your own image link
+       (for example: url('my-wallpaper.jpg') or any web image URL).
+       A classic blue sky & green hills gradient is included as a fallback.
+       ========================================================= */
+    :root {
+      --wallpaper-url: url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1920&q=80');
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      user-select: none;
+      -webkit-user-select: none;
+      overflow: hidden;
+    }
+
+    /* Allow text selection inside inputs, notes, and command prompt */
+    input, textarea, .selectable {
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    .font-mono-code {
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    /* Desktop Background Styling */
+    #desktop {
+      background-image:
+        var(--wallpaper-url),
+        linear-gradient(180deg, #2563eb 0%, #60a5fa 60%, #4ade80 61%, #15803d 100%);
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+
+    /* Window Animations & States */
+    .os-window {
+      position: absolute;
+      display: flex;
+      flex-direction: column;
+      border-radius: 0.75rem;
+      overflow: hidden;
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.38);
+      transition: opacity 0.15s ease, transform 0.15s ease;
+    }
+
+    .os-window.minimized {
+      opacity: 0;
+      transform: scale(0.9) translateY(40px);
+      pointer-events: none;
+    }
+
+    /* Active vs Inactive Window Title Bar */
+    .os-window.active-window {
+      border: 1px solid #60a5fa;
+    }
+
+    .os-window.inactive-window {
+      border: 1px solid #cbd5e1;
+    }
+
+    .os-window.inactive-window .window-header {
+      background: #475569 !important;
+    }
+  </style>
+</head>
+<body class="w-screen h-screen m-0 p-0 bg-slate-900">
+
+  <!-- =========================================================
+       2. DESKTOP AREA (Icons + Draggable App Windows)
+       ========================================================= -->
+  <main id="desktop" class="relative w-full h-[calc(100vh-48px)] p-4">
+
+    <!-- DESKTOP SHORTCUT ICONS (Left Column) -->
+    <div class="flex flex-col flex-wrap gap-3 w-24">
+
+      <!-- About Icon -->
+      <button onclick="openApp('win-about')" class="flex flex-col items-center p-2 rounded-xl hover:bg-white/20 active:bg-white/30 transition text-white text-center group">
+        <div class="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center text-2xl shadow-md group-hover:scale-105 transition">
+          💻
+        </div>
+        <span class="mt-1 text-xs font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">About XOS</span>
+      </button>
+
+      <!-- Calculator Icon -->
+      <button onclick="openApp('win-calc')" class="flex flex-col items-center p-2 rounded-xl hover:bg-white/20 active:bg-white/30 transition text-white text-center group">
+        <div class="w-12 h-12 rounded-xl bg-emerald-600 flex items-center justify-center text-2xl shadow-md group-hover:scale-105 transition">
+          🧮
+        </div>
+        <span class="mt-1 text-xs font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">Calculator</span>
+      </button>
+
+      <!-- Notes Icon -->
+      <button onclick="openApp('win-notes')" class="flex flex-col items-center p-2 rounded-xl hover:bg-white/20 active:bg-white/30 transition text-white text-center group">
+        <div class="w-12 h-12 rounded-xl bg-amber-500 flex items-center justify-center text-2xl shadow-md group-hover:scale-105 transition">
+          📝
+        </div>
+        <span class="mt-1 text-xs font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">Notes</span>
+      </button>
+
+      <!-- Command Prompt Icon -->
+      <button onclick="openApp('win-cmd')" class="flex flex-col items-center p-2 rounded-xl hover:bg-white/20 active:bg-white/30 transition text-white text-center group">
+        <div class="w-12 h-12 rounded-xl bg-slate-800 border border-slate-600 flex items-center justify-center font-mono-code text-emerald-400 font-bold text-lg shadow-md group-hover:scale-105 transition">
+          &gt;_
+        </div>
+        <span class="mt-1 text-xs font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">Command</span>
+      </button>
+
+      <!-- Paint Icon -->
+      <button onclick="openApp('win-paint')" class="flex flex-col items-center p-2 rounded-xl hover:bg-white/20 active:bg-white/30 transition text-white text-center group">
+        <div class="w-12 h-12 rounded-xl bg-purple-600 flex items-center justify-center text-2xl shadow-md group-hover:scale-105 transition">
+          🎨
+        </div>
+        <span class="mt-1 text-xs font-medium drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">Paint</span>
+      </button>
+
+    </div>
+
+    <!-- =========================================================
+         APP 1: ABOUT XOS WINDOW
+         ========================================================= -->
+    <section id="win-about" data-title="About XOS" data-icon="💻"
+             class="os-window bg-white text-slate-800 w-[380px] sm:w-[420px]"
+             style="top: 40px; left: 130px; z-index: 20;">
+      <!-- Title Bar -->
+      <div class="window-header h-10 bg-blue-600 text-white px-3 flex items-center justify-between cursor-move">
+        <div class="flex items-center gap-2 font-semibold text-sm pointer-events-none">
+          <span>💻</span>
+          <span>About XOS</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <button onclick="minimizeApp('win-about')" class="w-6 h-6 rounded bg-white/20 hover:bg-white/30 text-xs font-bold" title="Minimize">_</button>
+          <button onclick="closeApp('win-about')" class="w-6 h-6 rounded bg-red-500 hover:bg-red-600 text-xs font-bold" title="Close">✕</button>
+        </div>
+      </div>
+
+      <!-- Window Content -->
+      <div class="p-5 space-y-4 text-sm">
+        <div class="flex items-center gap-4 pb-3 border-b border-slate-200">
+          <div class="w-14 h-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center font-bold text-xl shadow">
+            XOS
+          </div>
+          <div>
+            <h1 class="text-lg font-bold text-slate-900">XOS Desktop v1.0</h1>
+            <p class="text-slate-600 text-xs">Created by <span class="font-semibold text-blue-600">@Kxrtik1315</span></p>
+            <p class="text-slate-400 text-xs mt-0.5">Simple Browser-Based Operating System</p>
+          </div>
+        </div>
+
+        <!-- System Specifications -->
+        <div class="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-1.5 text-xs">
+          <div class="font-semibold text-slate-700 mb-1">System Specifications</div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">Operating System:</span>
+            <span class="font-medium text-slate-800">XOS Web Edition (64-bit)</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">Included Apps:</span>
+            <span class="font-medium text-slate-800">Calculator, Notes, CMD, Paint</span>
+          </div>
+          <div class="flex justify-between">
+            <span class="text-slate-500">Storage:</span>
+            <span class="font-medium text-slate-800">Browser LocalStorage</span>
+          </div>
+        </div>
+
+        <!-- Live Wallpaper Changer (Beginner Friendly) -->
+        <div class="space-y-2 pt-1">
+          <label for="wallpaper-input" class="block text-xs font-semibold text-slate-700">
+            Desktop Wallpaper Image URL:
+          </label>
+          <div class="flex gap-2">
+            <input id="wallpaper-input" type="text"
+                   placeholder="Paste any image URL here..."
+                   class="flex-1 px-2.5 py-1.5 text-xs border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500" />
+            <button onclick="applyCustomWallpaper()"
+                    class="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-medium rounded-lg transition">
+              Apply
+            </button>
+          </div>
+          <div class="flex items-center justify-between text-[11px] text-slate-500 pt-1">
+            <span>Or try a preset:</span>
+            <div class="space-x-1.5">
+              <button onclick="setPresetWallpaper('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=1920&q=80')" class="text-blue-600 hover:underline">Valley</button>
+              <span>•</span>
+              <button onclick="setPresetWallpaper('https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&w=1920&q=80')" class="text-blue-600 hover:underline">Green Hills</button>
+              <span>•</span>
+              <button onclick="setPresetWallpaper('https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=1920&q=80')" class="text-blue-600 hover:underline">Mountains</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================
+         APP 2: CALCULATOR WINDOW
+         ========================================================= -->
+    <section id="win-calc" data-title="Calculator" data-icon="🧮"
+             class="os-window bg-slate-900 text-white w-[280px]"
+             style="top: 60px; left: 575px; z-index: 19;">
+      <!-- Title Bar -->
+      <div class="window-header h-10 bg-blue-600 text-white px-3 flex items-center justify-between cursor-move">
+        <div class="flex items-center gap-2 font-semibold text-sm pointer-events-none">
+          <span>🧮</span>
+          <span>Calculator</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <button onclick="minimizeApp('win-calc')" class="w-6 h-6 rounded bg-white/20 hover:bg-white/30 text-xs font-bold" title="Minimize">_</button>
+          <button onclick="closeApp('win-calc')" class="w-6 h-6 rounded bg-red-500 hover:bg-red-600 text-xs font-bold" title="Close">✕</button>
+        </div>
+      </div>
+
+      <!-- Calculator Body -->
+      <div class="p-3 space-y-3">
+        <!-- Display Screen -->
+        <div class="bg-slate-950 border border-slate-700 rounded-lg p-3 text-right">
+          <div id="calc-history" class="text-xs text-slate-400 font-mono-code h-4 truncate"></div>
+          <div id="calc-display" class="text-2xl font-bold font-mono-code text-white truncate">0</div>
+        </div>
+
+        <!-- Calculator Buttons Grid -->
+        <div class="grid grid-cols-4 gap-2 text-sm font-semibold">
+          <button onclick="calcClear()" class="col-span-2 py-2.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white">C</button>
+          <button onclick="calcBackspace()" class="py-2.5 rounded-lg bg-slate-700 hover:bg-slate-600">⌫</button>
+          <button onclick="calcInput('/')" class="py-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950">÷</button>
+
+          <button onclick="calcInput('7')" class="py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700">7</button>
+          <button onclick="calcInput('8')" class="py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700">8</button>
+          <button onclick="calcInput('9')" class="py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700">9</button>
+          <button onclick="calcInput('*')" class="py-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950">×</button>
+
+          <button onclick="calcInput('4')" class="py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700">4</button>
+          <button onclick="calcInput('5')" class="py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700">5</button>
+          <button onclick="calcInput('6')" class="py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700">6</button>
+          <button onclick="calcInput('-')" class="py-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950">−</button>
+
+          <button onclick="calcInput('1')" class="py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700">1</button>
+          <button onclick="calcInput('2')" class="py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700">2</button>
+          <button onclick="calcInput('3')" class="py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700">3</button>
+          <button onclick="calcInput('+')" class="py-2.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-slate-950">+</button>
+
+          <button onclick="calcInput('0')" class="col-span-2 py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700">0</button>
+          <button onclick="calcInput('.')" class="py-2.5 rounded-lg bg-slate-800 hover:bg-slate-700">.</button>
+          <button onclick="calcCalculate()" class="py-2.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950">=</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================
+         APP 3: NOTES WINDOW
+         ========================================================= -->
+    <section id="win-notes" data-title="Notes" data-icon="📝"
+             class="os-window bg-white text-slate-800 w-[380px] sm:w-[440px]"
+             style="top: 290px; left: 170px; z-index: 18;">
+      <!-- Title Bar -->
+      <div class="window-header h-10 bg-blue-600 text-white px-3 flex items-center justify-between cursor-move">
+        <div class="flex items-center gap-2 font-semibold text-sm pointer-events-none">
+          <span>📝</span>
+          <span>Notes</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <button onclick="minimizeApp('win-notes')" class="w-6 h-6 rounded bg-white/20 hover:bg-white/30 text-xs font-bold" title="Minimize">_</button>
+          <button onclick="closeApp('win-notes')" class="w-6 h-6 rounded bg-red-500 hover:bg-red-600 text-xs font-bold" title="Close">✕</button>
+        </div>
+      </div>
+
+      <!-- Toolbar -->
+      <div class="bg-slate-100 border-b border-slate-200 px-3 py-1.5 flex items-center justify-between text-xs">
+        <span id="notes-status" class="text-slate-500">Auto-saved to browser</span>
+        <div class="flex items-center gap-2">
+          <button onclick="clearNotes()" class="px-2 py-1 rounded bg-slate-200 hover:bg-slate-300 text-slate-700 font-medium">Clear</button>
+          <button onclick="downloadNotes()" class="px-2.5 py-1 rounded bg-blue-600 hover:bg-blue-700 text-white font-medium">Download .txt</button>
+        </div>
+      </div>
+
+      <!-- Notepad Textarea -->
+      <textarea id="notes-textarea"
+                class="w-full h-56 p-3 text-sm text-slate-800 focus:outline-none resize-none leading-relaxed"
+                placeholder="Type your notes here... Everything is automatically saved in your browser!"></textarea>
+    </section>
+
+    <!-- =========================================================
+         APP 4: COMMAND PROMPT WINDOW
+         ========================================================= -->
+    <section id="win-cmd" data-title="Command Prompt" data-icon=">_"
+             class="os-window bg-slate-950 text-slate-100 w-[420px] sm:w-[500px] hidden"
+             style="top: 110px; left: 260px; z-index: 17;">
+      <!-- Title Bar -->
+      <div class="window-header h-10 bg-blue-600 text-white px-3 flex items-center justify-between cursor-move">
+        <div class="flex items-center gap-2 font-semibold text-sm pointer-events-none">
+          <span class="font-mono-code text-xs">&gt;_</span>
+          <span>Command Prompt</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <button onclick="minimizeApp('win-cmd')" class="w-6 h-6 rounded bg-white/20 hover:bg-white/30 text-xs font-bold" title="Minimize">_</button>
+          <button onclick="closeApp('win-cmd')" class="w-6 h-6 rounded bg-red-500 hover:bg-red-600 text-xs font-bold" title="Close">✕</button>
+        </div>
+      </div>
+
+      <!-- Terminal Body -->
+      <div id="cmd-body" class="p-3 h-72 overflow-y-auto font-mono-code text-xs text-emerald-400 space-y-1.5"
+           onclick="document.getElementById('cmd-input').focus()">
+        <div>XOS Command Prompt [Version 1.0]</div>
+        <div>Created by @Kxrtik1315. Type <span class="underline">help</span> for a list of commands.</div>
+        <div id="cmd-output" class="space-y-1 pt-1"></div>
+
+        <!-- Input Line -->
+        <div class="flex items-center gap-1.5 pt-1">
+          <span class="shrink-0">C:\XOS&gt;</span>
+          <input id="cmd-input" type="text" autocomplete="off" spellcheck="false"
+                 class="w-full bg-transparent border-none outline-none font-mono-code text-xs text-inherit"
+                 placeholder="Type a command and press Enter..." />
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================
+         APP 5: PAINT / DRAWING APP WINDOW
+         ========================================================= -->
+    <section id="win-paint" data-title="Paint" data-icon="🎨"
+             class="os-window bg-white text-slate-800 w-[440px] sm:w-[520px] hidden"
+             style="top: 80px; left: 320px; z-index: 16;">
+      <!-- Title Bar -->
+      <div class="window-header h-10 bg-blue-600 text-white px-3 flex items-center justify-between cursor-move">
+        <div class="flex items-center gap-2 font-semibold text-sm pointer-events-none">
+          <span>🎨</span>
+          <span>Paint</span>
+        </div>
+        <div class="flex items-center gap-1.5">
+          <button onclick="minimizeApp('win-paint')" class="w-6 h-6 rounded bg-white/20 hover:bg-white/30 text-xs font-bold" title="Minimize">_</button>
+          <button onclick="closeApp('win-paint')" class="w-6 h-6 rounded bg-red-500 hover:bg-red-600 text-xs font-bold" title="Close">✕</button>
+        </div>
+      </div>
+
+      <!-- Paint Controls Toolbar -->
+      <div class="bg-slate-100 border-b border-slate-200 px-3 py-2 flex flex-wrap items-center justify-between gap-2 text-xs">
+        <div class="flex items-center gap-2">
+          <label class="font-medium text-slate-600">Color:</label>
+          <input id="paint-color" type="color" value="#2563eb" onchange="setPaintEraser(false)"
+                 class="w-7 h-7 rounded cursor-pointer border border-slate-300" />
+
+          <label class="font-medium text-slate-600 ml-2">Size:</label>
+          <select id="paint-size" class="px-2 py-1 border border-slate-300 rounded bg-white">
+            <option value="3">Small (3px)</option>
+            <option value="6" selected>Medium (6px)</option>
+            <option value="12">Large (12px)</option>
+            <option value="22">Extra Large (22px)</option>
+          </select>
+        </div>
+
+        <div class="flex items-center gap-1.5">
+          <button id="paint-eraser-btn" onclick="togglePaintEraser()"
+                  class="px-2.5 py-1 rounded border border-slate-300 bg-white hover:bg-slate-200 font-medium">
+            Eraser: Off
+          </button>
+          <button onclick="clearPaintCanvas()"
+                  class="px-2.5 py-1 rounded bg-rose-500 hover:bg-rose-600 text-white font-medium">
+            Clear
+          </button>
+        </div>
+      </div>
+
+      <!-- Drawing Canvas -->
+      <div class="bg-slate-200 p-2 flex justify-center">
+        <canvas id="paint-canvas" width="490" height="290"
+                class="bg-white rounded border border-slate-300 cursor-crosshair touch-none"></canvas>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- =========================================================
+       3. START MENU POPUP
+       ========================================================= -->
+  <div id="start-menu"
+       class="fixed bottom-14 left-3 z-50 w-64 bg-slate-900/95 backdrop-blur-md text-white rounded-xl border border-slate-700 shadow-2xl overflow-hidden hidden">
+    <!-- User Header -->
+    <div class="bg-blue-600 px-4 py-3 flex items-center gap-3">
+      <div class="w-9 h-9 rounded-full bg-white text-blue-600 font-bold flex items-center justify-center text-sm">
+        KX
+      </div>
+      <div>
+        <div class="font-bold text-sm">XOS Desktop</div>
+        <div class="text-xs text-blue-100">@Kxrtik1315</div>
+      </div>
+    </div>
+
+    <!-- App List -->
+    <div class="p-2 space-y-1 text-sm">
+      <button onclick="openApp('win-about'); toggleStartMenu(false);" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 text-left">
+        <span>💻</span> <span>About XOS</span>
+      </button>
+      <button onclick="openApp('win-calc'); toggleStartMenu(false);" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 text-left">
+        <span>🧮</span> <span>Calculator</span>
+      </button>
+      <button onclick="openApp('win-notes'); toggleStartMenu(false);" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 text-left">
+        <span>📝</span> <span>Notes</span>
+      </button>
+      <button onclick="openApp('win-cmd'); toggleStartMenu(false);" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 text-left">
+        <span class="font-mono-code text-emerald-400 font-bold">&gt;_</span> <span>Command Prompt</span>
+      </button>
+      <button onclick="openApp('win-paint'); toggleStartMenu(false);" class="w-full flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-white/10 text-left">
+        <span>🎨</span> <span>Paint</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- =========================================================
+       4. BOTTOM TASKBAR (Start Button, Open Windows, Clock)
+       ========================================================= -->
+  <footer class="fixed bottom-0 inset-x-0 h-12 z-40 bg-slate-900/95 backdrop-blur-md border-t border-slate-700 px-3 flex items-center justify-between text-white">
+
+    <!-- Left: Start Button + Running App Tabs -->
+    <div class="flex items-center gap-2 overflow-x-auto">
+      <button id="start-btn" onclick="toggleStartMenu()"
+              class="h-8 px-3.5 rounded-lg bg-blue-600 hover:bg-blue-500 active:scale-95 font-bold text-xs tracking-wide flex items-center gap-1.5 shadow transition">
+        <span>❖</span>
+        <span>Start</span>
+      </button>
+
+      <div class="h-5 w-[1px] bg-slate-700 mx-1"></div>
+
+      <!-- Open Window Buttons Container -->
+      <div id="taskbar-apps" class="flex items-center gap-1.5"></div>
+    </div>
+
+    <!-- Right: System Clock -->
+    <div class="text-right font-mono-code text-xs px-2">
+      <div id="clock-time" class="font-semibold">12:00 PM</div>
+      <div id="clock-date" class="text-[10px] text-slate-400">10/28/2026</div>
+    </div>
+
+  </footer>
+
+  <!-- =========================================================
+       5. JAVASCRIPT LOGIC (Beginner-Friendly & Well-Commented)
+       ========================================================= -->
+  <script>
+    /* ---------------------------------------------------------
+       A. WINDOW MANAGEMENT (Open, Close, Minimize, Focus, Drag)
+       --------------------------------------------------------- */
+    const allWindowIds = ['win-about', 'win-calc', 'win-notes', 'win-cmd', 'win-paint'];
+    let topZIndex = 30;
+    let focusedWindowId = 'win-about';
+
+    // Bring a window to the front when clicked or opened
+    function focusApp(windowId) {
+      const win = document.getElementById(windowId);
+      if (!win || win.classList.contains('hidden')) return;
+
+      topZIndex++;
+      win.style.zIndex = topZIndex;
+      focusedWindowId = windowId;
+
+      // Update active/inactive visual borders
+      allWindowIds.forEach(id => {
+        const el = document.getElementById(id);
+        if (id === windowId) {
+          el.classList.add('active-window');
+          el.classList.remove('inactive-window');
+        } else {
+          el.classList.remove('active-window');
+          el.classList.add('inactive-window');
+        }
+      });
+
+      updateTaskbar();
+    }
+
+    // Open or restore a window
+    function openApp(windowId) {
+      const win = document.getElementById(windowId);
+      if (!win) return;
+      win.classList.remove('hidden', 'minimized');
+      focusApp(windowId);
+    }
+
+    // Minimize a window to the taskbar
+    function minimizeApp(windowId) {
+      const win = document.getElementById(windowId);
+      if (!win) return;
+      win.classList.add('minimized');
+      if (focusedWindowId === windowId) focusedWindowId = null;
+      updateTaskbar();
+    }
+
+    // Close a window completely
+    function closeApp(windowId) {
+      const win = document.getElementById(windowId);
+      if (!win) return;
+      win.classList.add('hidden');
+      win.classList.remove('minimized');
+      if (focusedWindowId === windowId) focusedWindowId = null;
+      updateTaskbar();
+    }
+
+    // Rebuild the taskbar buttons for all open windows
+    function updateTaskbar() {
+      const container = document.getElementById('taskbar-apps');
+      container.innerHTML = '';
+
+      allWindowIds.forEach(id => {
+        const win = document.getElementById(id);
+        if (!win || win.classList.contains('hidden')) return;
+
+        const title = win.getAttribute('data-title');
+        const icon = win.getAttribute('data-icon');
+        const isActive = (focusedWindowId === id && !win.classList.contains('minimized'));
+
+        const btn = document.createElement('button');
+        btn.className = `h-8 px-3 rounded-lg text-xs font-medium flex items-center gap-1.5 transition ${
+          isActive ? 'bg-blue-600/40 border border-blue-400 text-white' : 'bg-slate-800 hover:bg-slate-700 text-slate-300'
+        }`;
+        btn.innerHTML = `<span>${icon}</span><span>${title}</span>`;
+
+        btn.onclick = () => {
+          if (win.classList.contains('minimized')) {
+            openApp(id);
+          } else if (focusedWindowId === id) {
+            minimizeApp(id);
+          } else {
+            focusApp(id);
+          }
+        };
+
+        container.appendChild(btn);
+      });
+    }
+
+    // Make all windows draggable by their .window-header
+    document.querySelectorAll('.os-window').forEach(win => {
+      win.addEventListener('pointerdown', () => focusApp(win.id));
+
+      const header = win.querySelector('.window-header');
+      let isDragging = false;
+      let offsetX = 0;
+      let offsetY = 0;
+
+      header.addEventListener('pointerdown', (e) => {
+        // Don't drag if clicking minimize or close buttons
+        if (e.target.closest('button')) return;
+
+        isDragging = true;
+        focusApp(win.id);
+        const rect = win.getBoundingClientRect();
+        offsetX = e.clientX - rect.left;
+        offsetY = e.clientY - rect.top;
+        header.setPointerCapture(e.pointerId);
+      });
+
+      header.addEventListener('pointermove', (e) => {
+        if (!isDragging) return;
+        let left = e.clientX - offsetX;
+        let top = e.clientY - offsetY;
+
+        // Keep window inside the screen bounds
+        left = Math.max(0, Math.min(left, window.innerWidth - 100));
+        top = Math.max(0, Math.min(top, window.innerHeight - 90));
+
+        win.style.left = left + 'px';
+        win.style.top = top + 'px';
+      });
+
+      header.addEventListener('pointerup', () => {
+        isDragging = false;
+      });
+    });
+
+    /* ---------------------------------------------------------
+       B. START MENU & WALLPAPER CHANGER
+       --------------------------------------------------------- */
+    function toggleStartMenu(forceState) {
+      const menu = document.getElementById('start-menu');
+      const show = typeof forceState === 'boolean' ? forceState : menu.classList.contains('hidden');
+      menu.classList.toggle('hidden', !show);
+    }
+
+    // Close Start Menu when clicking outside
+    document.addEventListener('pointerdown', (e) => {
+      const menu = document.getElementById('start-menu');
+      const btn = document.getElementById('start-btn');
+      if (!menu.classList.contains('hidden') && !menu.contains(e.target) && !btn.contains(e.target)) {
+        menu.classList.add('hidden');
+      }
+    });
+
+    // Change wallpaper from the About window input
+    function applyCustomWallpaper() {
+      const url = document.getElementById('wallpaper-input').value.trim();
+      if (!url) return;
+      setPresetWallpaper(url);
+    }
+
+    function setPresetWallpaper(url) {
+      document.documentElement.style.setProperty('--wallpaper-url', `url('${url}')`);
+      document.getElementById('wallpaper-input').value = url;
+    }
+
+    /* ---------------------------------------------------------
+       C. APP 2: CALCULATOR LOGIC
+       --------------------------------------------------------- */
+    let calcExpression = '';
+
+    function updateCalcScreen() {
+      const display = document.getElementById('calc-display');
+      display.textContent = calcExpression || '0';
+    }
+
+    function calcInput(val) {
+      calcExpression += val;
+      updateCalcScreen();
+    }
+
+    function calcClear() {
+      calcExpression = '';
+      document.getElementById('calc-history').textContent = '';
+      updateCalcScreen();
+    }
+
+    function calcBackspace() {
+      calcExpression = calcExpression.slice(0, -1);
+      updateCalcScreen();
+    }
+
+    function calcCalculate() {
+      if (!calcExpression) return;
+      try {
+        // Only allow safe math characters
+        const sanitized = calcExpression.replace(/[^0-9+\-*/.]/g, '');
+        const result = Function('"use strict"; return (' + sanitized + ')')();
+        document.getElementById('calc-history').textContent = calcExpression + ' =';
+        calcExpression = String(Number(result.toFixed(8)));
+        updateCalcScreen();
+      } catch (err) {
+        document.getElementById('calc-display').textContent = 'Error';
+        calcExpression = '';
+      }
+    }
+
+    /* ---------------------------------------------------------
+       D. APP 3: NOTES LOGIC (Auto-save & Download)
+       --------------------------------------------------------- */
+    const notesArea = document.getElementById('notes-textarea');
+    const notesStatus = document.getElementById('notes-status');
+
+    // Load saved notes on startup
+    notesArea.value = localStorage.getItem('xos_simple_notes') ||
+      "Welcome to XOS Notes!\n\n- Drag any window by its blue title bar.\n- Use the About window to test custom background images.\n- Try the Calculator, Paint, or Command Prompt apps.";
+
+    notesArea.addEventListener('input', () => {
+      localStorage.setItem('xos_simple_notes', notesArea.value);
+      notesStatus.textContent = 'Saved ✓';
+    });
+
+    function clearNotes() {
+      notesArea.value = '';
+      localStorage.setItem('xos_simple_notes', '');
+      notesStatus.textContent = 'Cleared';
+    }
+
+    function downloadNotes() {
+      const blob = new Blob([notesArea.value], { type: 'text/plain' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'xos-notes.txt';
+      link.click();
+    }
+
+    /* ---------------------------------------------------------
+       E. APP 4: COMMAND PROMPT LOGIC
+       --------------------------------------------------------- */
+    const cmdInput = document.getElementById('cmd-input');
+    const cmdOutput = document.getElementById('cmd-output');
+    const cmdBody = document.getElementById('cmd-body');
+
+    function printCmd(html) {
+      const line = document.createElement('div');
+      line.innerHTML = html;
+      cmdOutput.appendChild(line);
+      cmdBody.scrollTop = cmdBody.scrollHeight;
+    }
+
+    cmdInput.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter') return;
+      const raw = cmdInput.value.trim();
+      cmdInput.value = '';
+
+      printCmd(`<span>C:\\XOS&gt; ${raw.replace(/</g, '&lt;')}</span>`);
+      if (!raw) return;
+
+      const parts = raw.split(' ');
+      const cmd = parts[0].toLowerCase();
+      const arg = parts.slice(1).join(' ');
+
+      if (cmd === 'help') {
+        printCmd(
+          `Available commands:<br>` +
+          `&nbsp;&nbsp;<b>help</b>   - Show this help message<br>` +
+          `&nbsp;&nbsp;<b>ver</b>    - Show XOS version info<br>` +
+          `&nbsp;&nbsp;<b>date</b>   - Show current date<br>` +
+          `&nbsp;&nbsp;<b>time</b>   - Show current time<br>` +
+          `&nbsp;&nbsp;<b>echo</b>   - Print text (e.g. echo Hello)<br>` +
+          `&nbsp;&nbsp;<b>color</b>  - Change text color: green, white, amber<br>` +
+          `&nbsp;&nbsp;<b>cls</b>    - Clear the screen`
+        );
+      } else if (cmd === 'ver' || cmd === 'about') {
+        printCmd(`XOS Web Operating System v1.0 — Created by @Kxrtik1315`);
+      } else if (cmd === 'date') {
+        printCmd(`Current Date: ${new Date().toLocaleDateString()}`);
+      } else if (cmd === 'time') {
+        printCmd(`Current Time: ${new Date().toLocaleTimeString()}`);
+      } else if (cmd === 'echo') {
+        printCmd(arg.replace(/</g, '&lt;') || '');
+      } else if (cmd === 'color') {
+        cmdBody.classList.remove('text-emerald-400', 'text-white', 'text-amber-400');
+        if (arg === 'white') cmdBody.classList.add('text-white');
+        else if (arg === 'amber') cmdBody.classList.add('text-amber-400');
+        else cmdBody.classList.add('text-emerald-400');
+        printCmd(`Terminal color updated.`);
+      } else if (cmd === 'cls' || cmd === 'clear') {
+        cmdOutput.innerHTML = '';
+      } else {
+        printCmd(`'${cmd.replace(/</g, '&lt;')}' is not recognized. Type <b>help</b> for commands.`);
+      }
+    });
+
+    /* ---------------------------------------------------------
+       F. APP 5: PAINT / DRAWING CANVAS LOGIC
+       --------------------------------------------------------- */
+    const canvas = document.getElementById('paint-canvas');
+    const ctx = canvas.getContext('2d');
+    let isDrawing = false;
+    let isEraser = false;
+
+    // Fill canvas with white background initially
+    function clearPaintCanvas() {
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+    clearPaintCanvas();
+
+    function setPaintEraser(state) {
+      isEraser = state;
+      const btn = document.getElementById('paint-eraser-btn');
+      btn.textContent = isEraser ? 'Eraser: On' : 'Eraser: Off';
+      btn.className = isEraser
+        ? 'px-2.5 py-1 rounded border border-blue-600 bg-blue-600 text-white font-medium'
+        : 'px-2.5 py-1 rounded border border-slate-300 bg-white hover:bg-slate-200 font-medium';
+    }
+
+    function togglePaintEraser() {
+      setPaintEraser(!isEraser);
+    }
+
+    function getCanvasCoords(e) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      };
+    }
+
+    canvas.addEventListener('pointerdown', (e) => {
+      isDrawing = true;
+      const pos = getCanvasCoords(e);
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y);
+    });
+
+    canvas.addEventListener('pointermove', (e) => {
+      if (!isDrawing) return;
+      const pos = getCanvasCoords(e);
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.lineWidth = Number(document.getElementById('paint-size').value);
+      ctx.strokeStyle = isEraser ? '#ffffff' : document.getElementById('paint-color').value;
+
+      ctx.lineTo(pos.x, pos.y);
+      ctx.stroke();
+    });
+
+    window.addEventListener('pointerup', () => {
+      isDrawing = false;
+    });
+
+    /* ---------------------------------------------------------
+       G. LIVE TASKBAR CLOCK & STARTUP
+       --------------------------------------------------------- */
+    function updateClock() {
+      const now = new Date();
+      document.getElementById('clock-time').textContent =
+        now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      document.getElementById('clock-date').textContent =
+        now.toLocaleDateString();
+    }
+
+    updateClock();
+    setInterval(updateClock, 1000);
+    focusApp('win-about');
+  </script>
+</body>
+</html>
